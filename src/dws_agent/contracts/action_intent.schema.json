@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dws-agent/contracts/action_intent.schema.json",
+  "title": "ActionIntent",
+  "description": "The ONLY message the Executor consumes from the thinking side. Pure intent (no executed write). Executor reads ONLY argv for risk classification; it NEVER reads --yes and NEVER trusts semantic_labels to upgrade permissiveness (labels may only make a decision stricter via AND).",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["action_id", "created_at", "source", "argv"],
+  "properties": {
+    "action_id": {
+      "type": "string",
+      "description": "Globally unique id binding confirm_token + audit.",
+      "pattern": "^AI-[0-9]{8}-[0-9a-f]{8}$"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "RFC3339 UTC timestamp.",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "string",
+      "description": "Who produced this intent.",
+      "enum": ["triage", "work", "cli", "test"]
+    },
+    "argv": {
+      "type": "array",
+      "description": "FULL dws command line as a token list. argv[0] MUST be 'dws'. Missing argv or argv[0]!='dws' => hard reject (R2-class deny).",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "prefixItems": [{ "const": "dws" }]
+    },
+    "cwd": {
+      "type": ["string", "null"],
+      "description": "Absolute working directory, or null."
+    },
+    "stdin": {
+      "type": ["string", "null"],
+      "description": "Optional payload piped to dws on stdin."
+    },
+    "semantic_labels": {
+      "type": "object",
+      "description": "Conservative labels from the thinking side. Phase0 defaults. Can only make decisions STRICTER (AND), never more permissive.",
+      "additionalProperties": true,
+      "properties": {
+        "commit_class": {
+          "type": "string",
+          "description": "Promise/commitment level. Default 'maybe'.",
+          "enum": ["none", "maybe", "yes"],
+          "default": "maybe"
+        },
+        "taint": {
+          "type": "string",
+          "description": "Taint level. Default 'INTERNAL'.",
+          "enum": ["CLEAN", "INTERNAL", "SENSITIVE"],
+          "default": "INTERNAL"
+        },
+        "public_ok": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "case_id": { "type": ["string", "null"] },
+        "task_id": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

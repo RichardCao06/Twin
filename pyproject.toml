@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dws-agent"
+version = "0.1.0"
+description = "DingTalk dws-agent (phase0): deterministic Executor + PolicyGate + dws-shim, no-LLM daemon, audit/confirm/token isolation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "dws-agent" }]
+dependencies = [
+    "pyyaml>=6.0",
+    "cryptography>=41.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+# Console scripts (packaging glue owned by the cli module).
+# - dws-agent : control CLI (init / confirm / status)
+# - dwsd      : daemon poll loop (no LLM)
+# - dws-shim  : the only process allowed to invoke the dws binary; validates
+#               DWS_GATE_TOKEN and re-checks the R0 whitelist before any write.
+[project.scripts]
+dws-agent = "dws_agent.cli.main:main"
+dwsd = "dws_agent.cli.dwsd:main"
+dws-shim = "dws_agent.executor.shim:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dws_agent*"]
+
+# Ship the packaged default policy + the action_intent JSON schema as data so
+# `dws-agent init` can copy policy.yaml to $DWS_AGENT_HOME/policy/.
+[tool.setuptools.package-data]
+"dws_agent.policy" = ["policy.yaml"]
+"dws_agent.contracts" = ["*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

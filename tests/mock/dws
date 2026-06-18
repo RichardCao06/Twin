@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Mock dws binary for phase0 tests.
+
+NEVER touches the network and NEVER performs any real DingTalk side effect.
+Its only job is to record the argv (and a little env context) it was invoked
+with into an append-only JSONL log so tests can assert *whether* and *with what
+arguments* dws would have been called.
+
+The log path is taken from the ``MOCK_DWS_LOG`` env var (set by the test
+harness). Each invocation appends one JSON object:
+
+    {"argv": [...], "cwd": "...", "stdin": "...", "ts": <epoch>}
+
+It always exits 0. It reads stdin (if any) so piped payloads are captured but
+never acted upon.
+"""
+import json
+import os
+import sys
+import time
+
+
+def main() -> int:
+    log = os.environ.get("MOCK_DWS_LOG")
+    stdin_data = ""
+    try:
+        if not sys.stdin.isatty():
+            stdin_data = sys.stdin.read()
+    except Exception:
+        stdin_data = ""
+
+    record = {
+        "argv": list(sys.argv[1:]),
+        "cwd": os.getcwd(),
+        "stdin": stdin_data,
+        "ts": time.time(),
+        # Prove the gate token was stripped before exec (must be absent).
+        "had_gate_token": "DWS_GATE_TOKEN" in os.environ,
+    }
+    if log:
+        with open(log, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+
+    # Emit a deterministic readback line so the executor captures stdout.
+    sys.stdout.write("mock-dws ok: %s\n" % " ".join(sys.argv[1:]))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

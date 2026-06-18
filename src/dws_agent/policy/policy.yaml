@@ -1,0 +1,191 @@
+# Packaged default policy for dws-agent (phase0).
+# Copied to $DWS_AGENT_HOME/policy/policy.yaml on init; runtime copy overrides this.
+# Phase0 implements the R-axis only. C/W axes are parsed but NOT enforced.
+#
+# IMPORTANT: prefixes below are GROUNDED in the real `dws` v1.0.39 command tree
+# (probed via `dws <product> --help`), NOT the design doc's illustrative names.
+# Anything not matched here falls to default-deny (deny_level => needs confirm).
+version: 1
+
+defaults:
+  # default-deny: any subcommand that is neither in r0_whitelist nor matched by an
+  # explicit rule is classified at this level (>= R2 => needs confirm_token).
+  deny_level: R2
+  confirm_ttl_seconds: 300
+
+levels:
+  R0: { auto: true,  needs_confirm: false }
+  R1: { auto: false, needs_confirm: true }
+  R2: { auto: false, needs_confirm: true }
+  R3: { auto: false, needs_confirm: true, human_only: true }
+
+# R0 read-only whitelist. Each entry is matched against the NORMALIZED argv
+# (dws binary + --yes/-y stripped) by prefix. Longest matching prefix wins.
+# NOTE: `chat message list-direct` is deliberately EXCLUDED (single-chat hard
+# filter, design §7/§12) — it must never be auto-allowed into the read path.
+r0_whitelist:
+  # chat (IM) reads
+  - { match: ["chat", "message", "list"] }
+  - { match: ["chat", "message", "list-all"] }
+  - { match: ["chat", "message", "list-by-ids"] }
+  - { match: ["chat", "message", "list-by-sender"] }
+  - { match: ["chat", "message", "list-focused"] }
+  - { match: ["chat", "message", "list-mentions"] }
+  - { match: ["chat", "message", "list-topic-replies"] }
+  - { match: ["chat", "message", "list-unread-conversations"] }
+  - { match: ["chat", "message", "query-send-status"] }
+  - { match: ["chat", "message", "read-status"] }
+  - { match: ["chat", "message", "search"] }
+  - { match: ["chat", "message", "search-advanced"] }
+  - { match: ["chat", "search"] }
+  - { match: ["chat", "search-common"] }
+  - { match: ["chat", "conversation-info"] }
+  - { match: ["chat", "list-top-conversations"] }
+  - { match: ["chat", "group", "list-my-groups"] }
+  - { match: ["chat", "group", "get-by-group-id"] }
+  - { match: ["chat", "group", "members"] }
+  - { match: ["chat", "group", "member-role"] }
+  - { match: ["chat", "group", "invite-url"] }
+  # oa approval reads
+  - { match: ["oa", "approval", "list-pending"] }
+  - { match: ["oa", "approval", "list-cc"] }
+  - { match: ["oa", "approval", "list-executed"] }
+  - { match: ["oa", "approval", "list-forms"] }
+  - { match: ["oa", "approval", "list-initiated"] }
+  - { match: ["oa", "approval", "list-submitted"] }
+  - { match: ["oa", "approval", "detail"] }
+  - { match: ["oa", "approval", "records"] }
+  - { match: ["oa", "approval", "tasks"] }
+  # todo reads
+  - { match: ["todo", "list"] }
+  - { match: ["todo", "task", "list"] }
+  - { match: ["todo", "task", "get"] }
+  # calendar reads
+  - { match: ["calendar", "event", "list"] }
+  - { match: ["calendar", "event", "get"] }
+  - { match: ["calendar", "busy"] }
+  - { match: ["calendar", "room"] }
+  # doc reads
+  - { match: ["doc", "read"] }
+  - { match: ["doc", "search"] }
+  - { match: ["doc", "list"] }
+  - { match: ["doc", "info"] }
+  - { match: ["doc", "download"] }
+  - { match: ["doc", "export"] }
+  # report reads
+  - { match: ["report", "inbox"] }
+  - { match: ["report", "inbox-list"] }
+  - { match: ["report", "outbox"] }
+  - { match: ["report", "outbox-list"] }
+  - { match: ["report", "list"] }
+  - { match: ["report", "detail"] }
+  - { match: ["report", "get"] }
+  - { match: ["report", "stats"] }
+  - { match: ["report", "sent"] }
+  - { match: ["report", "template-list"] }
+  - { match: ["report", "template-get"] }
+  - { match: ["report", "created"] }
+  # minutes reads
+  - { match: ["minutes", "list"] }
+  - { match: ["minutes", "get"] }
+  - { match: ["minutes", "record"] }
+  - { match: ["minutes", "speaker"] }
+  - { match: ["minutes", "hot-word"] }
+  - { match: ["minutes", "mind-graph"] }
+  # contact reads (results are TAINTED downstream, design §7/§12)
+  - { match: ["contact", "search"] }
+  - { match: ["contact", "search-mobile"] }
+  - { match: ["contact", "get"] }
+  - { match: ["contact", "get-self"] }
+  - { match: ["contact", "list"] }
+  - { match: ["contact", "profile"] }
+  - { match: ["contact", "dept"] }
+  - { match: ["contact", "label"] }
+  - { match: ["contact", "relation"] }
+  # drive reads
+  - { match: ["drive", "list"] }
+  - { match: ["drive", "list-spaces"] }
+  - { match: ["drive", "info"] }
+  - { match: ["drive", "download"] }
+  # aitable reads
+  - { match: ["aitable", "list"] }
+  - { match: ["aitable", "info"] }
+  - { match: ["aitable", "record", "list"] }
+  - { match: ["aitable", "record", "get"] }
+  - { match: ["aitable", "record", "query"] }
+  - { match: ["aitable", "field"] }
+  - { match: ["aitable", "view"] }
+  # mail reads
+  - { match: ["mail", "mailbox"] }
+  - { match: ["mail", "message", "get"] }
+  - { match: ["mail", "message", "search"] }
+  - { match: ["mail", "folder"] }
+  - { match: ["mail", "thread"] }
+
+# Always-denied (cmd, subcmd) pairs. Checked FIRST and terminal; NOT confirmable.
+never:
+  - ["auth", "export"]
+  - ["auth", "import"]
+  - ["auth", "logout"]
+  - ["auth", "reset"]
+
+# Explicit classification overrides keyed by argv prefix.
+# Longest matching prefix wins. Levels: R3 = 对外发送/审批决策 (design §5/§10);
+# R2 = 不可逆/高影响; R1 = 可逆写. Everything else => default-deny (R2).
+rules:
+  # ---- R3: 对外发送 / 审批决策 (强制 confirm_token + 收件人体检 + 内容扫描) ----
+  - { prefix: ["chat", "message", "send"], level: R3 }
+  - { prefix: ["chat", "message", "send-by-bot"], level: R3 }
+  - { prefix: ["chat", "message", "send-by-webhook"], level: R3 }
+  - { prefix: ["chat", "message", "send-card"], level: R3 }
+  - { prefix: ["chat", "message", "reply"], level: R3 }
+  - { prefix: ["chat", "message", "forward"], level: R3 }
+  - { prefix: ["chat", "message", "combine-forward"], level: R3 }
+  - { prefix: ["ding", "send"], level: R3 }
+  - { prefix: ["ding", "message", "send"], level: R3 }
+  - { prefix: ["mail", "send"], level: R3 }
+  - { prefix: ["mail", "message", "send"], level: R3 }
+  - { prefix: ["mail", "message", "reply"], level: R3 }
+  - { prefix: ["mail", "message", "reply-all"], level: R3 }
+  - { prefix: ["mail", "message", "forward"], level: R3 }
+  - { prefix: ["oa", "approval", "approve"], level: R3 }
+  - { prefix: ["oa", "approval", "reject"], level: R3 }
+  - { prefix: ["oa", "approval", "redirect-task"], level: R3 }
+  # ---- R2: 不可逆 / 高影响 (撤回/删除/转移/权限/禁言/改写) ----
+  - { prefix: ["chat", "message", "recall"], level: R2 }
+  - { prefix: ["chat", "message", "recall-by-bot"], level: R2 }
+  - { prefix: ["chat", "message", "update-card"], level: R2 }
+  - { prefix: ["chat", "group", "dismiss"], level: R2 }
+  - { prefix: ["chat", "group", "quit"], level: R2 }
+  - { prefix: ["chat", "group", "set-admin"], level: R2 }
+  - { prefix: ["chat", "group", "transfer-owner"], level: R2 }
+  - { prefix: ["chat", "group", "set-history"], level: R2 }
+  - { prefix: ["chat", "group-mute"], level: R2 }
+  - { prefix: ["chat", "group-mute-member"], level: R2 }
+  - { prefix: ["ding", "message", "recall"], level: R2 }
+  - { prefix: ["oa", "approval", "revoke"], level: R2 }
+  - { prefix: ["doc", "delete"], level: R2 }
+  - { prefix: ["doc", "move"], level: R2 }
+  - { prefix: ["doc", "permission"], level: R2 }
+  - { prefix: ["drive", "delete"], level: R2 }
+  - { prefix: ["minutes", "replace-text"], level: R2 }
+  - { prefix: ["minutes", "permission"], level: R2 }
+  - { prefix: ["aitable", "delete"], level: R2 }
+  - { prefix: ["aitable", "record", "delete"], level: R2 }
+  - { prefix: ["mail", "message", "batch-delete"], level: R2 }
+  - { prefix: ["todo", "task", "delete"], level: R2 }
+  - { prefix: ["calendar", "event", "delete"], level: R2 }
+  # ---- R1: 可逆写 (草稿/创建/更新, 阶段0仍需 confirm; 阶段2按可验证性放开) ----
+  - { prefix: ["todo", "task", "create"], level: R1 }
+  - { prefix: ["todo", "create"], level: R1 }
+  - { prefix: ["calendar", "event", "create"], level: R1 }
+  - { prefix: ["aitable", "record", "create"], level: R1 }
+  - { prefix: ["report", "submit"], level: R1 }
+  - { prefix: ["report", "create"], level: R1 }
+  - { prefix: ["doc", "create"], level: R1 }
+  # ---- auth (非 never 的其余 auth 子命令) => R3 ----
+  - { prefix: ["auth"], level: R3 }
+
+# Extension points (parsed, not enforced in phase0).
+C_axis: { enabled: false }
+W_axis: { enabled: false }

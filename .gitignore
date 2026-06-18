@@ -5,3 +5,6 @@ __pycache__/
 *.egg-info/
 .venv/
 state.db
+# Litter from running the CLI as a script with a misconfigured DWS_AGENT_HOME
+<__main__.Paths object at *>
+tests/mock/__pycache__/
