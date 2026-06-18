@@ -520,6 +520,15 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_stat.set_defaults(func=cmd_status)
 
+    # KDL knowledge-base command group (phase1). Lazy + non-fatal: if the kdl
+    # package is absent/broken, the rest of the CLI must still work.
+    try:
+        from dws_agent.kdl.cli import register_kb  # type: ignore
+
+        register_kb(sub)
+    except Exception:
+        pass
+
     return p
 
 
