@@ -8,3 +8,7 @@ state.db
 # Litter from running the CLI as a script with a misconfigured DWS_AGENT_HOME
 <__main__.Paths object at *>
 tests/mock/__pycache__/
+# IDE
+.idea/
+# 文档渲染产物（html 由 md 生成，归档只留 md）
+docs/**/*.html
