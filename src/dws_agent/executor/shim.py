@@ -90,16 +90,16 @@ def _gate_secret(paths: Any) -> bytes | None:
     Prefers the canonical crypto module. Returns None if unavailable (callers
     treat that as "cannot verify" => deny write).
     """
+    # Env override wins (test determinism / Keychain-free CI); real runs derive
+    # the 'gate' HMAC key from Keychain so Executor-mint and shim-verify agree.
+    env_secret = os.environ.get("DWS_AGENT_GATE_SECRET")
+    if env_secret:
+        return env_secret.encode("utf-8")
     try:  # pragma: no cover - prefers canonical module when available
-        from ..crypto import keys  # type: ignore
+        from ..core.crypto import get_keychain_secret  # type: ignore
 
-        return keys.get_hmac_key("gate", paths=paths)
+        return get_keychain_secret("gate")
     except Exception:
-        # Test fallback: allow an env-injected secret so the shim's verify path
-        # is exercisable without Keychain. Never used for R0 reads.
-        env_secret = os.environ.get("DWS_AGENT_GATE_SECRET")
-        if env_secret:
-            return env_secret.encode("utf-8")
         return None
 
 

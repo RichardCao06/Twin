@@ -146,13 +146,18 @@ class Executor:
 
     # -- gate token -------------------------------------------------------
     def _gate_secret(self) -> bytes | None:
-        try:  # pragma: no cover - prefers canonical module
-            from ..crypto import keys  # type: ignore
+        # Env override wins (keeps tests deterministic & Keychain-free); real
+        # runs derive the 'gate' HMAC key from Keychain via core.crypto so that
+        # Executor-mint and shim-verify agree on the same key.
+        env_secret = os.environ.get("DWS_AGENT_GATE_SECRET")
+        if env_secret:
+            return env_secret.encode("utf-8")
+        try:
+            from ..core.crypto import get_keychain_secret  # type: ignore
 
-            return keys.get_hmac_key("gate", paths=self.paths)
+            return get_keychain_secret("gate")
         except Exception:
-            env_secret = os.environ.get("DWS_AGENT_GATE_SECRET")
-            return env_secret.encode("utf-8") if env_secret else None
+            return None
 
     def _mint_gate_token(self, intent: Intent) -> str:
         """Mint the per-invocation DWS_GATE_TOKEN for an intent.
