@@ -485,7 +485,7 @@ def _get(obj, key, default=None):
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="dws-agent",
-        description="dws-agent control CLI (init / confirm / status).",
+        description="dws-agent control CLI (init / confirm / status / kb / triage / send).",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -526,6 +526,14 @@ def _build_parser() -> argparse.ArgumentParser:
         from dws_agent.kdl.cli import register_kb  # type: ignore
 
         register_kb(sub)
+    except Exception:
+        pass
+
+    # MVP workflow command group (triage/send). Lazy + non-fatal too.
+    try:
+        from dws_agent.mvp.cli import register_mvp  # type: ignore
+
+        register_mvp(sub)
     except Exception:
         pass
 
