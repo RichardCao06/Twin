@@ -185,10 +185,15 @@ class Ingestor:
         )
 
         redaction_fired = False
+        # CODE bodies/quotes are source slices: skip the generic high-entropy
+        # scan (long identifiers / paths / dotted method chains are high-entropy
+        # by nature and would be mass-flagged as secrets). Named secret detectors
+        # still run, so real hard-coded keys/tokens in code are still caught.
+        is_code = str(cand.get("source_type") or "").upper() == "CODE"
 
         # --- body redaction ---
         raw_body = str(cand.get("body") or "")
-        rb = redact(raw_body)
+        rb = redact(raw_body, skip_entropy_scan=is_code)
         if rb.hits:
             redaction_fired = True
         body_taints: List[str] = [rb.max_taint]
@@ -199,7 +204,7 @@ class Ingestor:
         for p in self._usable_provenance(cand.get("provenance")):
             quote = str(p.get("quote") or "")
             if quote:
-                rq = redact(quote)
+                rq = redact(quote, skip_entropy_scan=is_code)
                 if rq.hits:
                     redaction_fired = True
                 q_text = rq.text

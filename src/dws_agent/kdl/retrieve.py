@@ -671,8 +671,11 @@ def _detect_contradiction(candidates: list[Candidate]) -> bool:
             continue
         st = _val(getattr(ku, "source_type", None))
         if st == "CODE":
-            keyc = (getattr(ku, "repo", None), getattr(ku, "symbol", None))
-            if keyc[1] is None:
+            # Key by (repo, file_path, symbol): same-named symbols in DIFFERENT
+            # files of one repo (__init__/main/Config/...) are NOT contradictions
+            # — only a same file+symbol with diverging content_hash is.
+            keyc = (getattr(ku, "repo", None), getattr(ku, "file_path", None), getattr(ku, "symbol", None))
+            if keyc[2] is None:
                 continue
             code_groups.setdefault(keyc, set()).add(getattr(ku, "content_hash", None))
         elif st == "QA":

@@ -121,6 +121,18 @@ PATTERNS: Dict[str, re.Pattern] = {
 # Token splitter for the generic entropy scan.
 _TOKEN_RE = re.compile(r"[^\s\"'<>(){}\[\],;]+")
 
+# CJK detection. A token containing CJK characters is natural-language text, not
+# an opaque base64/hex secret. CJK runs have no spaces, so the tokenizer yields
+# long high-char-diversity tokens whose entropy crosses the threshold — a
+# systematic false positive. Tokens with any CJK char are skipped by the entropy
+# scan (named detectors still catch ASCII secrets embedded near CJK text).
+_CJK_RE = re.compile(r"[　-〿㐀-鿿豈-﫿＀-￯]")
+
+
+def _has_cjk(s: str) -> bool:
+    """True if *s* contains any CJK char / CJK punctuation / fullwidth form."""
+    return bool(_CJK_RE.search(s))
+
 
 def shannon_entropy(s: str) -> float:
     """Return the Shannon entropy (bits per character) of *s*.
@@ -141,12 +153,20 @@ def shannon_entropy(s: str) -> float:
     return entropy
 
 
-def redact(text: str) -> RedactResult:
+def redact(text: str, *, skip_entropy_scan: bool = False) -> RedactResult:
     """Detect and redact secrets/PII in *text*.
 
-    Runs named regex detectors then a generic high-entropy token scan over
-    regions not already covered. Overlapping spans are resolved so each
-    character is redacted at most once (named patterns take precedence).
+    Runs named regex detectors then (unless ``skip_entropy_scan``) a generic
+    high-entropy token scan over regions not already covered. Overlapping spans
+    are resolved so each character is redacted at most once (named patterns take
+    precedence).
+
+    ``skip_entropy_scan=True`` runs ONLY the named-pattern detectors and skips
+    the generic high-entropy scan. Use it for SOURCE CODE, where long identifiers
+    / file paths / dotted method chains are high-entropy by nature and would
+    otherwise be mass-flagged as opaque secrets (false positives). The named
+    detectors still catch real hard-coded secrets (private keys / AKSK / JWT /
+    connection strings) embedded in code.
 
     Returns a :class:`RedactResult` with the redacted text, the list of hits,
     and the strictest taint implied by those hits.
@@ -182,25 +202,28 @@ def redact(text: str) -> RedactResult:
             )
             covered.append((start, end))
 
-    # 2. Generic high-entropy scan over uncovered tokens.
-    for m in _TOKEN_RE.finditer(text):
-        token = m.group(0)
-        start, end = m.start(), m.end()
-        if len(token) < _MIN_ENTROPY_TOKEN_LEN:
-            continue
-        if _overlaps(start, end):
-            continue
-        if shannon_entropy(token) >= ENTROPY_THRESHOLD:
-            spans.append(
-                Hit(
-                    category="high_entropy",
-                    start=start,
-                    end=end,
-                    taint=_CATEGORY_TAINT["high_entropy"],
-                    placeholder="[REDACTED:HIGH_ENTROPY]",
+    # 2. Generic high-entropy scan over uncovered tokens (skippable for code).
+    if not skip_entropy_scan:
+        for m in _TOKEN_RE.finditer(text):
+            token = m.group(0)
+            start, end = m.start(), m.end()
+            if len(token) < _MIN_ENTROPY_TOKEN_LEN:
+                continue
+            if _overlaps(start, end):
+                continue
+            if _has_cjk(token):
+                continue  # CJK natural-language text is never an opaque secret
+            if shannon_entropy(token) >= ENTROPY_THRESHOLD:
+                spans.append(
+                    Hit(
+                        category="high_entropy",
+                        start=start,
+                        end=end,
+                        taint=_CATEGORY_TAINT["high_entropy"],
+                        placeholder="[REDACTED:HIGH_ENTROPY]",
+                    )
                 )
-            )
-            covered.append((start, end))
+                covered.append((start, end))
 
     if not spans:
         return RedactResult(text=text, hits=[], max_taint="CLEAN")
