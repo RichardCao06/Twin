@@ -12,3 +12,6 @@ tests/mock/__pycache__/
 .idea/
 # 文档渲染产物（html 由 md 生成，归档只留 md）
 docs/**/*.html
+# Playwright E2E 验收的临时产物（截图/快照/storageState，含登录态，绝不入库）
+.playwright-mcp/
+/uat2-editor-login.png

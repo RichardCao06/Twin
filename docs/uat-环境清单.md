@@ -201,6 +201,24 @@ dataset-web ──POST /api/sso/auth/login──▶ dataset-sso（ec-sso）
 
 ---
 
+## 11. E2E 验收映射（`uat-verify` agent 用）
+
+> PR 仓库 → 验收前端 → uat 入口 → 登录 → 典型验收页/关键 API。登录走 `scripts/uat_login.py`
+> （凭证注入、storageState 不落库）；工作流见 `.claude/agents/uat-verify.md`。
+
+| PR 仓库 | 前端（俗称） | uat2 入口 | 登录接口 | 典型验收页 / 关键 API |
+|---|---|---|---|---|
+| **dataset-web** | 数据集编辑器 | `https://editor2.hiqdat.dev`（editor1 同构） | `POST /api/sso/auth/login` `{username,password,grantType:PASSWORD}` | 单元过程页 `/background-db/version/{id}/process` → `GET /backgroundDbBrowse/version/{id}/process`（被顶下线返 `code=4011/4012`） |
+| square-web-next | 广场 | ❓待补 | `/api/sso`（同 dataset-sso） | ❓待补 |
+| hiq-backend-admin / HiQ-backend-web | 大后台 | ❓待补（见第 2 节） | 自带 Sa-Token `POST /auth/login` | ❓待补 |
+| dataset-sso | SSO（无独立前端） | 经各前端验证 | — | 顶下线码 4011/4012 的来源 |
+
+**登录态机制**（dataset-web，源码实证 2026-06-24）：登录响应 data 整体存 cookie `user`（含 `accessToken`）；
+业务请求拦截器从该 cookie 取 token 放 `Authorization` 头、`userId` 放 userId 头；权限初始化
+`GET /api/sso/user/info/current?productCode=hiq_editor`；无 token → 跳 `/login?redirect=...`。
+
+---
+
 ## 附：凭证需求清单（**只列"要哪些 + 去哪取"，不写值；本节不入知识库**）
 
 | 凭证 | 用途 | 取法（Keychain key / vault 路径 / 找谁要） |
