@@ -49,6 +49,19 @@ def cmd_task_projects(args) -> int:
 # --------------------------------------------------------------------------- #
 # task create —— 建 draft（默认不发布）
 # --------------------------------------------------------------------------- #
+# 自动追加到每个 task description 的「测试门禁」——通过 prompt 要求 worker 提 PR 前
+# 写并跑通 mock 单测（验证降级，见 docs/复盘-2026-06-23.md 测试金字塔）。--no-test-gate 关。
+TEST_GATE_CLAUSE = """\
+---
+## ✅ 测试门禁（提 PR 前必须满足；不满足不要提 PR）
+1. 为本次改动写 **mock 依赖的单元/组件测试**：把外部依赖（后端响应/DB/Redis/网络/浏览器）mock 掉，
+   验证改动的核心逻辑。例：前端"收到 code=4011 → 提示并跳登录"应 mock 响应、断言拦截器行为，**无需起真后端**。
+2. **跑通项目测试套件并保证全绿**（如 `npm test` / `mvn test`）；**测试不过，不要提 PR**。
+3. PR 的 Test Plan 里"运行时/交互验证"用上述 mock 单测覆盖、标记为已跑通（附命令 + 结果）；
+   **不允许**用"需起后端 / 本环境未运行"作为未验证的借口——能 mock 的必须 mock 验证。
+4. 真全链路 E2E（需完整部署环境）可标注"部署后验证"，但静态检查 + mock 单测必须本地跑过。"""
+
+
 def _read_description(args) -> str:
     if args.description_file:
         return Path(args.description_file).read_text("utf-8")
@@ -66,6 +79,8 @@ def cmd_task_create(args) -> int:
     if not desc:
         print("需 --description 或 --description-file（任务指令/prompt）", file=sys.stderr)
         return 2
+    if not getattr(args, "no_test_gate", False):
+        desc = desc + "\n\n" + TEST_GATE_CLAUSE
 
     try:
         cli = _client()
@@ -165,6 +180,8 @@ def register_task(subparsers) -> None:
                       help="遇歧义自动决策（无人值守，谨慎用）")
     p_cr.add_argument("--model", choices=["default", "opus", "sonnet", "haiku"],
                       default="default", help="执行模型（默认 default）")
+    p_cr.add_argument("--no-test-gate", action="store_true",
+                      help="不追加测试门禁条款（纯文档/配置类 task 用）")
     p_cr.set_defaults(func=cmd_task_create)
 
     p_pub = task_sub.add_parser(
