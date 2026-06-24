@@ -485,7 +485,7 @@ def _get(obj, key, default=None):
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="dws-agent",
-        description="dws-agent control CLI (init / confirm / status / kb / triage / send).",
+        description="dws-agent control CLI (init / confirm / status / kb / triage / send / task / impact / diagnose).",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -534,6 +534,30 @@ def _build_parser() -> argparse.ArgumentParser:
         from dws_agent.mvp.cli import register_mvp  # type: ignore
 
         register_mvp(sub)
+    except Exception:
+        pass
+
+    # ClaudeCenter task bridge (projects/create/publish). Lazy + non-fatal too.
+    try:
+        from dws_agent.claudecenter.cli import register_task  # type: ignore
+
+        register_task(sub)
+    except Exception:
+        pass
+
+    # Impact analysis (影响面体检). Lazy + non-fatal too.
+    try:
+        from dws_agent.impact.cli import register_impact  # type: ignore
+
+        register_impact(sub)
+    except Exception:
+        pass
+
+    # Diagnose playbooks (诊断 playbook). Lazy + non-fatal too.
+    try:
+        from dws_agent.diagnose.cli import register_diagnose  # type: ignore
+
+        register_diagnose(sub)
     except Exception:
         pass
 
