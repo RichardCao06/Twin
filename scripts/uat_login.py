@@ -5,8 +5,8 @@
 绝不写进代码、不落库；Claude 只加载产出的 storageState 去跑 E2E 验收与判断，全程不接触
 明文密码。与 Phase0 代发（Executor/dws-shim 持 token、Claude 不碰 token）同一安全模型。
 
-用法（凭证经 ~/.claude/dws-agent/uat.env 注入，600、不入 git）：
-    source ~/.claude/dws-agent/uat.env
+用法（凭证经项目根 uat.env 注入，已 gitignore、600、不入 git）：
+    source ./uat.env
     python3 scripts/uat_login.py --verify --out /tmp/uat_A.json --label A
 
 输出：Playwright storageState JSON——cookie `user` 内含 accessToken；前端加载后会自行用该
@@ -27,7 +27,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, quote
 
 
 def _request(url, method="GET", payload=None, headers=None, timeout=20):
@@ -64,23 +64,29 @@ def login(base, sso_prefix, user, password):
 
 
 def build_storage_state(data, base):
-    """构造 Playwright storageState：cookie `user`=登录 data 的 JSON（含 accessToken）。
+    """构造 Playwright storageState：注入两个 cookie 才能让前端真正进入登录态
+    （2026-06-24 #71 顶下线 E2E 实测踩出）：
 
-    TenantId（localStorage）不在此预设——前端加载后会用 token 调权限接口自动补全。
+    - ``user``：前端(js-cookie)读取的登录态 JSON（含 accessToken/userId 等）。value 按
+      js-cookie 习惯做 URL 编码（≈ JS encodeURIComponent），否则前端 ``Cookies.get`` 解析
+      失败、当作未登录。
+    - ``accessToken``：Sa-Token 的认证 cookie（token-name=accessToken）。后端鉴权靠它，
+      缺它则权限/业务接口认不到 token → 前端被踢回登录页。
+
+    TenantId（localStorage）不预设——前端加载后会用 token 调权限接口自动补全。
     """
     parts = urlsplit(base)
     host = parts.hostname
     origin = "%s://%s" % (parts.scheme, host)
     expires = int(time.time()) + 3 * 24 * 3600  # accessToken 有效期 3 天（uat 清单 3b）
-    return {
-        "cookies": [{
-            "name": "user",
-            "value": json.dumps(data, ensure_ascii=False, separators=(",", ":")),
-            "domain": host, "path": "/", "expires": expires,
-            "httpOnly": False, "secure": base.startswith("https"), "sameSite": "Lax",
-        }],
-        "origins": [{"origin": origin, "localStorage": []}],
-    }
+    common = {"domain": host, "path": "/", "expires": expires,
+              "httpOnly": False, "secure": base.startswith("https"), "sameSite": "Lax"}
+    user_json = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    cookies = [dict(name="user", value=quote(user_json, safe="!*'()"), **common)]
+    token = data.get("accessToken")
+    if token:
+        cookies.append(dict(name="accessToken", value=token, **common))
+    return {"cookies": cookies, "origins": [{"origin": origin, "localStorage": []}]}
 
 
 def verify_token(base, sso_prefix, token, user_id, product_code):
@@ -108,7 +114,7 @@ def main(argv=None):
     password = os.environ.get("UAT_TEST_PASSWORD")
     if not user or not password:
         raise SystemExit("缺凭证：经环境变量 UAT_TEST_USER / UAT_TEST_PASSWORD 注入"
-                         "（见 ~/.claude/dws-agent/uat.env，600、不入 git）")
+                         "（见项目根 uat.env，已 gitignore、600）")
 
     data, token = login(args.base, args.sso_prefix, user, password)
     tag = (" [%s]" % args.label) if args.label else ""
