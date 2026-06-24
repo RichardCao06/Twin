@@ -219,6 +219,39 @@ dataset-web ──POST /api/sso/auth/login──▶ dataset-sso（ec-sso）
 
 ---
 
+## 12. 部署映射 & 手动部署（`uat-deploy` agent 用；2026-06-24 实测）
+
+> CI 自动部署当前不可用（见 12b）。本节记手动部署需要的映射与链路。
+
+### 12a. dataset-web 的两套 uat2 后端（关键：registry 不一致）
+| 对外入口 | k8s ns/deployment | registry | tag | 备注 |
+|---|---|---|---|---|
+| `editor2.hiqdat.dev`(APISIX)、`uat2.hiqdat.dev`(db-uat2 ingress) | `db-uat2`/`dataset-web` | **harbor.ecdigit.cn** | `uat2` | **真实用户/李辰走这个** |
+| (内部，无 ingress) | `hiqlcd-app-uat2`/`dataset-web` | **registry.cn-sh1.ctyun.cn**(天翼云) | `uat2` | CI reusable 推这个 |
+
+- ⚠️ **CI 推天翼云，但 editor2/uat2.hiqdat.dev 实际吃 db-uat2(harbor)** → 手动部署 editor2 必须推 **harbor**（推天翼云不生效，踩过）。
+- 两个 deployment 都 `imagePullPolicy: Always`、tag 固定 `uat2` 覆盖式 → 重启即拉新。
+- 其它：`hiqlcd-app-uatN`(N=1..9) → 天翼云 `:uatN`、对外 `editorN.ecdigit.cn`；`db-dev`/`db-prod` 各一套（harbor）。
+
+### 12b. CI 自动部署现状（为什么要手动）
+- 各前端 `.github/workflows/main.yml` → 调 `HiQ-AI/workflow/.github/workflows/reusable-docker-build.yml@main`。
+- 该 reusable **只 build+push 镜像（天翼云）+ 钉钉通知，没有 k8s deploy 步骤**；让 k8s 用新镜像靠外部（ArgoCD/手动 rollout）。
+- 当前 build 因 `platforms: amd64,arm64` 多架构 QEMU **超时/失败**（修复 PR `HiQ-AI/workflow#2` 改单架构、**未合**）→ 镜像推不上 → uat 不更新。
+- ⚠️ 该 reusable 内**硬编码明文凭证**（天翼云密码 / GitHub PAT / 钉钉 token）——**待轮换 + 移 GitHub Secrets**。
+
+### 12c. 手动部署链路（绕过坏 CI；见 `.claude/agents/uat-deploy.md`）
+1. `cd <项目>`、checkout 对的分支、`git pull`；
+2. 本地 build（dataset-web：`npm run build:test` 出 dist）；
+3. `docker buildx build -f DockerfileLocal --platform linux/amd64 --push --provenance=false -t <registry>/hiq-ai/<repo>:<tag> .`（`--platform amd64` 必须；用本地现有 registry 登录态、**不用 reusable 的明文**）；
+4. 重启对应 deployment 拉新镜像（见 12d）。
+
+### 12d. k8s 权限（rollout 谁做）
+- kubeconfig：`hiq-backend-admin/.claude/kubeconfig-uat.yaml`。
+- RBAC 实测（2026-06-24）：**只读**——`get/logs/auth can-i` 可，**`patch/update deployments`=no**（各 uat ns 均拒）。
+- ⇒ **agent 不能 `rollout restart`**；重启由有权限的人 / ArgoCD 做。`uat-deploy` 只做到 push，给出重启命令交人。
+
+---
+
 ## 附：凭证需求清单（**只列"要哪些 + 去哪取"，不写值；本节不入知识库**）
 
 | 凭证 | 用途 | 取法（Keychain key / vault 路径 / 找谁要） |
