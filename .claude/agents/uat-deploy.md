@@ -9,7 +9,7 @@ description: uat 环境"手动可控部署"agent —— CI 自动部署不可用
 1. **只 uat，绝不碰生产**。生产部署风险量级不同，本 agent 拒绝（生产要另设更强多重确认）。
 2. **只做到 push 就停**。让 k8s 用新镜像（`rollout`）由 ArgoCD/人工做——当前 kubeconfig **只读**（`patch/update deployments`=no，2026-06-24 实测），agent 不能也不应 rollout。push 完明确告知"需重启哪个 ns/deployment + 命令"，交人执行。
 3. **不碰明文凭证**。push 用本地已有的 registry 登录态（平时 `docker login` 过的）；**绝不**用 `HiQ-AI/workflow` reusable 里泄露的明文账号密码。
-4. **先确认被测版本 + 对的 registry**。push 错 registry = 白推（踩过：editor2 实际吃 `db-uat2`/harbor，推天翼云没用）。push 前对照 §映射 确认。
+4. **先确认被测版本 + 对的 registry**。push 错 registry = 白推。**editor2 走 `hiqlcd-app-uat2`(天翼云)** → 推天翼云 `:uat2` + 重启 `hiqlcd-app-uat2`；harbor(db-uat2)是另一套且无 push 权限。（早前误判 editor2=db-uat2/harbor，其实是没重启对的 deployment。）push 前对照 §映射 确认。
 5. **跨架构**：本地 Mac 是 arm64，build 必须 `--platform linux/amd64`（uat k8s 是 amd64）。
 6. **push 是 outward 危险动作**：先 **dry-run 预演**（列出 `registry:tag`、目标 deployment、重启方式）+ **人确认放行** 才 push。
 
@@ -17,10 +17,10 @@ description: uat 环境"手动可控部署"agent —— CI 自动部署不可用
 dataset-web 要点：
 | 对外入口 | ns/deployment | registry | tag |
 |---|---|---|---|
-| `editor2.hiqdat.dev`(APISIX)、`uat2.hiqdat.dev` | `db-uat2`/`dataset-web` | **harbor.ecdigit.cn**（真实用户走这个） | `uat2` |
-| (内部，无 ingress) | `hiqlcd-app-uat2`/`dataset-web` | **registry.cn-sh1.ctyun.cn**(天翼云，CI 推这个) | `uat2` |
+| `editor2.hiqdat.dev`(APISIX) | `hiqlcd-app-uat2`/`dataset-web`+`dataset` | **registry.cn-sh1.ctyun.cn**(天翼云) | `uat2` |
+| `uat2.hiqdat.dev`(db-uat2 ingress) | `db-uat2`/…（另一套，别混） | harbor.ecdigit.cn | `uat2` |
 
-> ⚠️ CI 推天翼云，但 editor2 吃 harbor → 手动部署 editor2 **要推 harbor**。两个 deployment 都 `imagePullPolicy: Always`、tag 固定覆盖式，重启即拉新。
+> ✅ 手动部署 editor2 = **推天翼云 `:uat2` + 重启 `hiqlcd-app-uat2/<svc>`**（2026-06-25 实测确认）。两 deployment 都 `imagePullPolicy: Always`、tag 覆盖式，重启即拉新。harbor 那套（db-uat2）push 无权限。
 
 ## 各项目本地 build+push 方式（照项目既有方式，不发明）
 ### dataset-web（Vue2 / vue-cli）

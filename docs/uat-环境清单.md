@@ -226,11 +226,12 @@ dataset-web ──POST /api/sso/auth/login──▶ dataset-sso（ec-sso）
 ### 12a. dataset-web 的两套 uat2 后端（关键：registry 不一致）
 | 对外入口 | k8s ns/deployment | registry | tag | 备注 |
 |---|---|---|---|---|
-| `editor2.hiqdat.dev`(APISIX)、`uat2.hiqdat.dev`(db-uat2 ingress) | `db-uat2`/`dataset-web` | **harbor.ecdigit.cn** | `uat2` | **真实用户/李辰走这个** |
-| (内部，无 ingress) | `hiqlcd-app-uat2`/`dataset-web` | **registry.cn-sh1.ctyun.cn**(天翼云) | `uat2` | CI reusable 推这个 |
+| `editor2.hiqdat.dev`(APISIX 路由) | `hiqlcd-app-uat2`/`dataset-web`+`dataset` | **registry.cn-sh1.ctyun.cn**(天翼云) | `uat2` | **真实用户/李辰走这个**；CI reusable 也推天翼云 |
+| `uat2.hiqdat.dev`(db-uat2 ingress) | `db-uat2`/`dataset-web`+`dataset` | **harbor.ecdigit.cn** | `uat2` | 另一套（别和 editor2 混）|
 
-- ⚠️ **CI 推天翼云，但 editor2/uat2.hiqdat.dev 实际吃 db-uat2(harbor)** → 手动部署 editor2 必须推 **harbor**（推天翼云不生效，踩过）。
-- 两个 deployment 都 `imagePullPolicy: Always`、tag 固定 `uat2` 覆盖式 → 重启即拉新。
+- ✅ **手动部署 editor2 = 推天翼云 `:uat2` + 重启 `hiqlcd-app-uat2/<svc>`**（2026-06-25 dataset 后端 4011 修复实测确认：推天翼云 + 重启 hiqlcd-app-uat2 → editor2 业务接口生效）。
+- ⚠️ 早前误记 editor2 吃 db-uat2/harbor——"推天翼云没生效"其实是**没重启对的 deployment（hiqlcd-app-uat2）**，非 registry 错；harbor 那套（db-uat2）push 还会 `unauthorized`（无权限）。
+- 两套 deployment 都 `imagePullPolicy: Always`、tag 固定 `uat2` 覆盖式 → 重启即拉新。
 - 其它：`hiqlcd-app-uatN`(N=1..9) → 天翼云 `:uatN`、对外 `editorN.ecdigit.cn`；`db-dev`/`db-prod` 各一套（harbor）。
 
 ### 12b. CI 自动部署现状（为什么要手动）
