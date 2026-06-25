@@ -17,3 +17,6 @@ docs/**/*.html
 /*.png
 # uat E2E 凭证（含密码，放项目根但绝不入库；切勿 git add -f）
 /uat.env
+
+# 生产凭证(含测试账号密码/token)，绝不入库
+prod.env

@@ -7,14 +7,17 @@
   - 所以拿浏览器里的 KubeSphere token，就能 curl/HTTP 这个 log API 查日志，纯只读。
 
 用法（你只需给 服务名 + token，找错误再加 --grep）：
+  # 方式一：token 走环境变量（推荐，配合 prod.env）
+  source ./prod.env   # 内含 export KS_TOKEN=...
+  python3 scripts/ks_logs.py --service dataset --grep "导出失败|ILCD 导出任务执行失败"
+  # 方式二：token 直接传
   python3 scripts/ks_logs.py --service dataset --token "<浏览器copy的token>"
-  python3 scripts/ks_logs.py --service dataset --token "<token>" --grep "导出失败|ILCD 导出任务执行失败|下载H5文件失败"
-  python3 scripts/ks_logs.py --pod dataset-59955fdfbc-nk66l --token "<token>" --grep "Exception" --context 12
+  python3 scripts/ks_logs.py --pod dataset-59955fdfbc-nk66l --grep "Exception" --context 12
 
-token：KubeSphere 网页 → F12/Application → Cookie 里的 `token`（约 2 小时过期）。只从命令行传入、本脚本不写盘。
+token：从 KubeSphere 网页 cookie 复制（约 2 小时过期），从命令行 --token 或环境变量 KS_TOKEN 传入、本脚本不写盘。
 只读：仅 GET pods / pods/log，绝不写。
 """
-import argparse, json, re, ssl, sys, urllib.parse, urllib.request
+import argparse, json, os, re, ssl, sys, urllib.parse, urllib.request
 
 # 该环境固定值（如换集群/项目，改这里或加 --base/--ns）
 BASE = "https://k.hiqlcd.com/clusters/host/api/v1"
@@ -52,7 +55,8 @@ def main():
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--service", help="服务名(=deployment 名，如 dataset / backend / square-web-next)，自动找其所有 pod")
     g.add_argument("--pod", help="直接指定单个 pod 名")
-    ap.add_argument("--token", required=True, help="KubeSphere 浏览器登录 token（约 2h 过期）")
+    ap.add_argument("--token", default=os.environ.get("KS_TOKEN"),
+                    help="KubeSphere 浏览器 token（约 2h 过期）；默认读环境变量 KS_TOKEN（见 prod.env）")
     ap.add_argument("--grep", help="过滤正则（不给则打印各 pod 尾部）")
     ap.add_argument("--ns", default=DEFAULT_NS)
     ap.add_argument("--container", help="容器名（默认=服务名）")
@@ -61,6 +65,10 @@ def main():
     ap.add_argument("--context", type=int, default=0, help="命中行后追加 N 行（看异常堆栈）")
     ap.add_argument("--tail-lines-out", type=int, default=25, help="不 grep 时每个 pod 打印的尾部行数")
     a = ap.parse_args()
+
+    if not a.token:
+        sys.exit("[ERR] 缺 token：传 --token，或 `source ./prod.env` 设 KS_TOKEN"
+                 "（KubeSphere 网页 cookie 里复制，约 2h 过期）")
 
     if a.pod:
         pods = [a.pod]
