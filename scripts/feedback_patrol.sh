@@ -10,6 +10,8 @@ if [ -f "$ENVF" ]; then
 fi
 
 cd /Users/shujudagongren/Myspace/dingding-agent
+# launchd 启动时 PATH 极窄(/usr/bin:/bin)，补上 homebrew 让 gh/dws 可见（否则 gh not found → exit 1）
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PYTHONPATH=src
 export DWS_AGENT_DWS_BIN="${DWS_AGENT_DWS_BIN:-$(command -v dws)}"
 
