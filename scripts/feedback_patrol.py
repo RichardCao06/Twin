@@ -85,8 +85,14 @@ def _create_draft(num, title, line, project):
 
 
 def _notify(text):
-    subprocess.run(DWS + ["send", "--user", CAOYONG_UID, "--text", text, "--confirm"],
-                   capture_output=True, text=True, check=False)
+    """发钉钉通知。返回是否真的发成功——调用方必须检查，不能假定 subprocess 跑完就等于发出去了。"""
+    r = subprocess.run(DWS + ["send", "--user", CAOYONG_UID, "--text", text, "--confirm"],
+                        capture_output=True, text=True, check=False)
+    ok = r.returncode == 0
+    if not ok:
+        print("[ERROR] 通知发送失败 exit_code=%d\nstdout: %s\nstderr: %s"
+              % (r.returncode, r.stdout, r.stderr), file=sys.stderr)
+    return ok
 
 
 def main():
@@ -102,6 +108,7 @@ def main():
         return 0
 
     new = [i for i in issues if i["number"] not in seen]
+    notify_ok = None  # None=没到发送这一步（无新增/dry-run），True/False=真实发送结果
 
     if new:
         lines = ["🤖 feedback 巡检助理：发现 %d 个新 issue（只通知，处理哪些你手动定）" % len(new)]
@@ -117,19 +124,30 @@ def main():
         if dry:
             print("=== DRY-RUN 通知预览 ===\n" + text)
         else:
-            _notify(text)
-            for issue in new:
-                seen.add(issue["number"])
+            notify_ok = _notify(text)
+            if notify_ok:
+                for issue in new:
+                    seen.add(issue["number"])
+            else:
+                # 发送失败：绝不能标记已见，否则这批 issue 就永久漏掉、下次巡检也不会再提。
+                # 保留在 new 里不落 seen，下一小时重试。
+                print("[ERROR] 通知失败，%d 个新 issue 保留未标记，下次巡检重试：%s"
+                      % (len(new), [i["number"] for i in new]), file=sys.stderr)
     elif dry:
         print("（窗口内无新 issue）")
 
     if not dry:
         _save_seen(seen)
-    print("\n巡检完成：新 %d%s"
-          % (len(new),
-             "（dry-run，未发/未写状态）" if dry
-             else "（已通知 + 标记已见）" if new else "（无新增）"))
-    return 0
+    if dry:
+        status = "（dry-run，未发/未写状态）"
+    elif not new:
+        status = "（无新增）"
+    elif notify_ok:
+        status = "（已通知 + 标记已见）"
+    else:
+        status = "（通知失败！未标记，见上方 [ERROR]，下次重试）"
+    print("\n巡检完成：新 %d%s" % (len(new), status))
+    return 1 if notify_ok is False else 0
 
 
 if __name__ == "__main__":
