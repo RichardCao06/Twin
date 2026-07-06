@@ -23,7 +23,7 @@ try:
 except ImportError:
     sys.exit("需要 python-markdown：pip install markdown")
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
+ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 SRC_DIR = ROOT / "docs" / "design" / "md"
 DST_DIR = ROOT / "docs" / "design" / "html"
 

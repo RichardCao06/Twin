@@ -18,4 +18,4 @@ export PATH="/opt/homebrew/anaconda3/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PYTHONPATH=src
 export DWS_AGENT_DWS_BIN="${DWS_AGENT_DWS_BIN:-$(command -v dws)}"
 
-exec python3 scripts/feedback_patrol.py "$@"
+exec python3 scripts/ops/feedback_patrol.py "$@"
