@@ -1,6 +1,6 @@
-"""MVP 工作流（手动触发的"读消息→检索→拟答→你确认→代发"闭环）。
+"""分诊 · Triage · 分身的代答链路（手动触发的"读消息→检索→拟答→你确认→代发"闭环）。
 
-子命令在 :mod:`dws_agent.mvp.cli`，由 ``dws-agent`` 主 CLI 懒加载挂载：
+子命令在 :mod:`dws_agent.triage.cli`，由 ``dws-agent`` 主 CLI 懒加载挂载：
 
 - ``dws-agent triage`` —— 读钉钉消息 + KDL 检索 → 拟答包（纯只读）。
 - ``dws-agent send``   —— 你确认后经阶段0 安全链路代发（默认仅预览）。

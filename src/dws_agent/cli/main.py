@@ -529,11 +529,11 @@ def _build_parser() -> argparse.ArgumentParser:
     except Exception:
         pass
 
-    # MVP workflow command group (triage/send). Lazy + non-fatal too.
+    # Triage workflow command group (triage/send). Lazy + non-fatal too.
     try:
-        from dws_agent.mvp.cli import register_mvp  # type: ignore
+        from dws_agent.triage.cli import register_triage  # type: ignore
 
-        register_mvp(sub)
+        register_triage(sub)
     except Exception:
         pass
 
@@ -547,7 +547,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # Impact analysis (影响面体检). Lazy + non-fatal too.
     try:
-        from dws_agent.impact.cli import register_impact  # type: ignore
+        from dws_agent.analysis.impact_cli import register_impact  # type: ignore
 
         register_impact(sub)
     except Exception:
@@ -555,7 +555,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # Diagnose playbooks (诊断 playbook). Lazy + non-fatal too.
     try:
-        from dws_agent.diagnose.cli import register_diagnose  # type: ignore
+        from dws_agent.analysis.diagnose_cli import register_diagnose  # type: ignore
 
         register_diagnose(sub)
     except Exception:

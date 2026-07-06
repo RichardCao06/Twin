@@ -1,12 +1,12 @@
-"""MVP 工作流命令组：``dws-agent triage`` / ``dws-agent send``。
+"""分诊 · Triage 命令组：``dws-agent triage`` / ``dws-agent send``。
 
 把原 ``scripts/triage_mvp.py`` / ``scripts/send_mvp.py`` 提升为正式子命令，
-串起 MVP 闭环（手动触发）：
+串起分诊代答闭环（手动触发）：
 
     dws-agent triage   →   [Claude 会话内拟答]   →   你确认   →   dws-agent send
        读消息+检索+出包      带相关性判断/ABSTAIN                 经阶段0安全代发
 
-底线（见 docs/方案-MVP.md）：
+底线（见 docs/design/md/方案-MVP.md）：
 - triage 纯只读：只用 DwsReader 读 + KDL serve 检索，绝不发送、绝不调 dws 写。
 - send 默认**只预览不发**；加 ``--confirm`` 才经阶段0（confirm_token →
   Executor → dws-shim → 真实 dws）真发。绝不自动发、不冒充本人（提醒署名）。
@@ -114,7 +114,7 @@ def cmd_triage(args) -> int:
 class _ConfirmGate:
     """适配器：把 policy.confirm 暴露成 Executor 需要的 verify(action_id, argv, now)。
 
-    MVP 里"你敲 send --confirm"即视为你的确认：铸一次性 confirm_token，再由
+    分诊代答里"你敲 send --confirm"即视为你的确认：铸一次性 confirm_token，再由
     Executor 验证后 mint 一次性 gate token 交给 shim。验证的是**安全链路**，
     真正的人意是"你决定执行这条命令"。
     """
@@ -182,7 +182,7 @@ def cmd_send(args) -> int:
     for line in (args.text.splitlines() or [args.text]):
         print("    | %s" % line)
     if "助理" not in args.text and "代答" not in args.text:
-        print("  ⚠ 正文未见'助理代答'类署名 —— MVP 底线是不冒充本人，建议带署名。")
+        print("  ⚠ 正文未见'助理代答'类署名 —— 底线是不冒充本人，建议带署名。")
 
     if not args.confirm:
         print("\n仅预览，未发送。确认无误后加 --confirm 真发。")
@@ -228,16 +228,16 @@ def cmd_send(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# argparse wiring — register_mvp(subparsers)
+# argparse wiring — register_triage(subparsers)
 # --------------------------------------------------------------------------- #
-def register_mvp(subparsers) -> None:
-    """把 MVP 命令组（triage/send）挂到 ``dws-agent`` 的 add_subparsers 上。
+def register_triage(subparsers) -> None:
+    """把分诊 · Triage 命令组（triage/send）挂到 ``dws-agent`` 的 add_subparsers 上。
 
     由 ``cli.main._build_parser`` 懒加载、非致命地调用（缺这个包时主 CLI 仍可用）。
     """
     p_tri = subparsers.add_parser(
         "triage",
-        help="MVP 分诊：读钉钉消息→KDL 检索→出拟答包（只读，绝不发送）",
+        help="分诊：读消息→KDL 检索→出拟答包（只读，绝不发送）",
         description=("读消息 + 检索知识库，组装拟答包供 Claude 会话内拟答。"
                      "纯只读：绝不发送、绝不调 dws 写命令。"),
     )
@@ -251,7 +251,7 @@ def register_mvp(subparsers) -> None:
 
     p_snd = subparsers.add_parser(
         "send",
-        help="MVP 代发：你确认后经阶段0 代发（默认仅预览，--confirm 才真发）",
+        help="代发：你确认后经阶段0 代发（默认仅预览，--confirm 才真发）",
         description=("经阶段0（confirm_token → Executor → dws-shim → 真实 dws）代发。"
                      "默认只预览不发；加 --confirm 才真发。绝不自动发。"),
     )
