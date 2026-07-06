@@ -27,7 +27,25 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC_DIR = ROOT / "docs" / "design" / "md"
 DST_DIR = ROOT / "docs" / "design" / "html"
 
-MD_EXT = ["extra", "tables", "fenced_code", "toc", "sane_lists"]
+def _cjk_slugify(value: str, separator: str) -> str:
+    """保留中文的锚点 slug。
+
+    python-markdown 默认 slugify 会把中文全部剥掉、留下无意义的 _1 _2。
+    本函数：小写化 → 保留中文/字母/数字/连字符 → 其他非空白字符丢弃 →
+    连续空白折叠成 separator。锚点因此可读、可搜、可稳定跨版本引用。
+    """
+    import re, unicodedata
+
+    value = unicodedata.normalize("NFKC", value).strip().lower()
+    # 保留：中文/日文假名/字母/数字/连字符/下划线；空白保留后统一转 separator
+    value = re.sub(r"[^\w一-鿿぀-ゟ゠-ヿ\-\s]", "", value)
+    value = re.sub(r"\s+", separator, value)
+    value = re.sub(f"{re.escape(separator)}{{2,}}", separator, value)
+    return value.strip(separator) or "section"
+
+
+MD_EXT = ["extra", "tables", "fenced_code", "sane_lists"]
+MD_EXT_CONFIG = {"toc": {"slugify": _cjk_slugify}}
 
 TEMPLATE_HEAD = """<!DOCTYPE html>
 <html lang="zh-CN">
@@ -85,7 +103,12 @@ def render_one(src: pathlib.Path, dst: pathlib.Path) -> None:
     import markdown
     text = src.read_text(encoding="utf-8")
     title = derive_title(text, src.stem)
-    body = markdown.markdown(text, extensions=MD_EXT, output_format="html5")
+    body = markdown.markdown(
+        text,
+        extensions=MD_EXT + ["toc"],
+        extension_configs=MD_EXT_CONFIG,
+        output_format="html5",
+    )
     html = TEMPLATE_HEAD.format(title=title) + body + TEMPLATE_TAIL
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(html, encoding="utf-8")
