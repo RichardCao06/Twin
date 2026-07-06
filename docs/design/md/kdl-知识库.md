@@ -104,12 +104,14 @@ Provenance {
 
 ## 4. 四类数据源（枚举锁死，不新增）
 
-| 源 | source_type | 原始形态 | 蒸馏产物 | 新鲜度风险 | 摄取路径 |
+| 源 | source_type | 原始形态 | **实际入库产物** | 新鲜度风险 | 摄取路径 |
 |---|---|---|---|---|---|
-| 在开发项目代码 | CODE | commit / 函数 / 类 / 接口 | 契约、行为/副作用、已知坑（symbol 卡） | **极高**（代码漂移） | `GitReader.index_repo` 直接产候选，绕过蒸馏 |
-| 历史 issue / 写过的问题 | ISSUE | issue 正文 / 标题 / 标签 / 状态 | 症状 → 根因 → 处置 卡 | 中 | RawItem → Claude 蒸馏 → 候选 |
-| 历史问答对 | QA | 钉钉消息 / 文档评论 / 邮件往返 | 规范化 Q → A 对 | 中 | RawItem → Claude 蒸馏 → 候选（含反抢答校验） |
-| 干过的工作套路 | PLAYBOOK | 重复操作序列 / 审批 / 部署流程 | SOP / Runbook 步骤卡 | 低-中 | 主要来自本人钉钉文档 |
+| 在开发项目代码 | CODE | commit / 函数 / 类 / 接口 | **仅索引 + 原文切片**：title = `文件路径::符号名 (kind)`；body = 一行头信息 + 该符号完整源码切片；**不做语义蒸馏**（"契约 / 行为 / 已知坑"是设计意图，未启用，见 [§9](#9-本期不做推后--保留扩展点)） | **极高**（代码漂移） | `GitReader.index_repo` 直接产结构化候选，**绕过 Distiller**，Ingestor 校验后直接 upsert |
+| 历史 issue / 写过的问题 | ISSUE | issue 正文 / 标题 / 标签 / 状态 | 症状 → 根因 → 处置 卡（Claude 蒸馏） | 中 | RawItem → Claude 蒸馏 → 候选 |
+| 历史问答对 | QA | 钉钉消息 / 文档评论 / 邮件往返 | 规范化 Q → A 对（Claude 蒸馏） | 中 | RawItem → Claude 蒸馏 → 候选（含反抢答校验） |
+| 干过的工作套路 | PLAYBOOK | 重复操作序列 / 审批 / 部署流程 | SOP / Runbook 步骤卡（Claude 蒸馏） | 低-中 | 主要来自本人钉钉文档 |
+
+> **CODE 与其它三类的关键差异：**其它三类走"翻译官（Claude）读原文 → 产语义摘要 → 存摘要"；CODE 走"结构化索引 + 存原文切片 → 语义理解推迟到检索使用点由 Claude 现场做"。这个设计取舍见 §5.2 末尾说明。
 
 **为什么锁死 4 枚举不新增 DOC/NOTE：** 2026-06-22 拍板决策 D1。文档块按内容映射到 PLAYBOOK（SOP/流程类）或 ISSUE（症状-根因类），避免每加一个源就多一枚举、检索侧多一分支。
 
@@ -145,6 +147,20 @@ CODE 源的全部实现：
 - **三层新鲜度校验**（见 §6）。
 
 `GitReader.index_repo()` 直接产**已结构化的候选 dict**——每个 dict 里 provenance / repo / commit / file / symbol / line / hash 齐全，Ingestor 只需校验后直接 upsert，**不需要经过 Distiller**。这就是 CODE 灌库的高吞吐路径。
+
+**候选 dict 的实际字段**（`_candidate(repo, head, rel, sym)`，`code.py:526`）：
+
+| 字段 | 值示例 |
+|---|---|
+| `title` | `src/dws_agent/kdl/store.py::upsert_ku (function)` |
+| `body` | `function` upsert_ku `defined in src/…/store.py (lines 220-268) @ 7cb665f5abcd.` + 换行 + **该符号完整源码切片** |
+| `provenance` | 一条 `kind=COMMIT, ref=<head_sha>, quote=<源码切片>` |
+| 其它 | `repo / commit_sha / file_path / symbol / line_range / content_hash` |
+
+**明确的实施边界（重要）：** 当前 CODE 摄取**只做索引 + 原文切片**——`body` 是"这段代码的原文"，不是"这段代码被理解过的摘要"。设计文档里描述的"契约、行为/副作用、已知坑"三类语义卡属于**未启用的扩展**（见 §9）。这条设计取舍的原因：
+- 代码本身已经是结构化的（有文件、行号、符号名、`content_hash`），检索层通过 title + body 里的原文就能召回；
+- 语义理解推迟到检索使用点由 Claude 现场做——`kb search` 命中一张 CODE 卡后，读 body 里的原文再理解、再答。相当于卡片是"搜索索引"，理解在使用点做。
+- 走 Distiller 语义蒸馏所有函数的成本至少几十美元一轮，且每次代码大改要重跑。目前这种取舍解决了 80% 的问题，剩下 20% 待权威档场景真的需要时再启用。
 
 ### 5.3 `distill.py` · Distiller + RawItem（469 行）
 
@@ -288,10 +304,11 @@ CODE 是漂移风险最高的源。三层递进：
 
 | 条目 | 状态 | 何时启用 |
 |---|---|---|
+| **CODE 语义蒸馏**（契约卡 / 行为卡 / 已知坑卡） | **未启用**——当前 CODE 只做索引 + 原文切片。设计中通过 `linked_symbols` 反向引用 + `ku_edge` stale 传播的框架已就绪 | 需要"直接调权威契约卡回答"、且 Claude 每次读原文成本太高时；成本预估 Workspace 全量至少几十美元/轮 |
 | `LlmDistiller`（外部 LLM 后端） | 保留 `_BACKENDS['llm']` 插入点，本期不实现 | 需要无人值守蒸馏时；接 `claude -p` headless 且钉死"只产 JSON、零副作用" |
 | 后台轮询 SLA 守护 | `dwsd` 有 `_kdl_tick` 钩子但只跑巡检；不做后台自动蒸馏 | 代答规模化后（见 [方案-MVP.md](方案-MVP.md) 阶段 4） |
 | 对话/QA 抢答污染检测（`pair_qa`） | 已有强校验框架（回复必须真的出自本人 account，无中间插话），本期未上线大规模 QA 摄取 | QA 数据量上来后 |
-| 权威升级到 AUTHORITATIVE 的批量流程 | 目前只有 DRAFT → REVIEWED 批量脚本；升 AUTHORITATIVE 走单条本人确认 | 当有真实需要"权威档"来源时逐条升 |
+| 权威升级到 AUTHORITATIVE 的批量流程 | 目前只有 DRAFT → REVIEWED 批量脚本；升 AUTHORITATIVE 走单条本人确认 | 当有真实需要"权威档"来源时逐条升；**注意** CODE 卡目前 body 是原文，升 AUTHORITATIVE 意义有限，等语义蒸馏启用后才真正有价值 |
 | 域路由 + 采样回查 | 设计里在阶段 5，代答尚未规模化不谈这个 | 阶段 5 |
 
 ---
