@@ -1,10 +1,17 @@
-# dws-agent (阶段 0：地基 + 认证 + 安全门)
+# dws-agent
 
-钉钉产品能力（dws CLI）之上的一个**思考与执行分离**的代理框架。本仓库目前完成
-**阶段 0** 的骨架与硬约束落地：凭证隔离、落盘加密入口、确定性执行器、按 argv
-判级的策略门、出口/污点骨架、全量审计、刷新串行化、以及无 LLM 的守护进程骨架。
+**一个面向"个人 + 项目知识 / 多 Agent 编排 / 持续复盘"的工程助理平台。**
 
-> 设计文档见 `docs/design/md/dws-agent-设计方案.md`。本仓库只实现阶段 0；阶段 1-4 留扩展点。
+三根柱子：
+- **知识（Knowledge）** —— KDL 灌入 Workspace 全部仓库 + 钉钉文档（7289+ KU）+ `MEMORY.md` 长期记忆 + `docs/retro/` 复盘沉淀
+- **编排（Orchestration）** —— 「无 LLM 确定性 Executor + PolicyGate 安全底座」之上，派活给远程 Worker（ClaudeCenter 桥接）或本地 subagent，Human-in-loop 兜底
+- **复盘（Retrospective）** —— 每次事故/上线/踩坑写复盘 → 提炼进 memory → 反过来指导下次决策
+
+钉钉产品能力（`dws` CLI）是这个平台的**入口通道之一**——原始触发场景，仍在跑 MVP1 代答链路和 feedback 巡检——但已不是重心。日常主要战场是跨仓库工程发布 / uat 部署 / 生产验证 / 复盘反哺。
+
+本仓库当前已完成：**阶段 0 安全地基** + **阶段 1 KDL 知识库** + **阶段 2 MVP1 钉钉代答链路**，正在演化"平台化能力"（多 Worker 协同、生产验证工具链、复盘半自动化）。
+
+> 完整设计文档见 [`docs/design/md/dws-agent-设计方案.md`](docs/design/md/dws-agent-设计方案.md)，当前执行蓝图见 [`docs/design/md/方案-MVP.md`](docs/design/md/方案-MVP.md)。
 
 ## 这是什么
 
