@@ -23,7 +23,7 @@
 
 ## 二、登录与鉴权链路补充校准
 
-`scripts/uat_login.py` 默认的 `Authorization` 头对 uat1（`backend1.hiqdat.dev` / `www1.hiqdat.dev`）**不适用**——探测后确认 dataset-sso 的 Sa-Token `token-name` 配置为 `accessToken`（见 `application-uat1.yml:111`），必须用 **`accessToken` 请求头 + `userId` 请求头**（而不是 `Authorization: Bearer ...`），验证接口才会认得。已用 API 探测坐实（见下 Case A）。
+`scripts/uat/uat_login.py` 默认的 `Authorization` 头对 uat1（`backend1.hiqdat.dev` / `www1.hiqdat.dev`）**不适用**——探测后确认 dataset-sso 的 Sa-Token `token-name` 配置为 `accessToken`（见 `application-uat1.yml:111`），必须用 **`accessToken` 请求头 + `userId` 请求头**（而不是 `Authorization: Bearer ...`），验证接口才会认得。已用 API 探测坐实（见下 Case A）。
 
 广场（square-web-next）登录态走 **iron-session**，裸 cookie 注入无效；沿用 `square-auth-kick` 记忆里记录的方法：用 `square-web-next/node_modules/iron-session` 的 `sealData()` + `app/session/lib.ts` 硬编码密钥，手工封装 `app-session-cookie`，配合 `satoken`/`accessToken`/`userId` 三个明文 cookie 一起注入（对齐 `app/session/auth.ts:setLoginCookies` 的真实字段）。
 

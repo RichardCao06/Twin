@@ -114,7 +114,7 @@ WHERE sale_method = 'BY_VERSION'
 - [ ] **数据库迁移**：`V1.2.16__create_ts_stripe_customer.sql` 新建 `ts_stripe_customer` 表（本人↔Stripe Customer 1:1 映射），非破坏性新建表，上线前确认迁移脚本已随 CI/手动执行。完整 SQL 见下方「附：完整 SQL 脚本」。
 - [ ] **Stripe Dashboard 前置配置**：确认生产 Stripe 账号已开通 `alipay` / `wechat_pay` capability（代码假设已开通，未做运行时探测，没开通会在 `PaymentIntent.create` 时报错）。
 - [x] **uat1 E2E 已验证**（[docs/uat1-E2E验收报告-2026-07-01.md](uat1-E2E验收报告-2026-07-01.md)）：PaymentElement 渲染 3 个支付方式 tab、支付宝跳转提示、微信二维码弹窗均 PASS（Stripe 测试模式）。
-- [ ] `SITE_X_API_KEY 未配置` 的 WARN 对 checkout 的影响仅做了前端行为侧排除（接口全 200），**未做生产日志交叉确认**——上线后建议用 `scripts/ks_logs.py --service square-web-next --grep 'X-API-Key|SITE_X_API_KEY'` 补一次日志级验证。
+- [ ] `SITE_X_API_KEY 未配置` 的 WARN 对 checkout 的影响仅做了前端行为侧排除（接口全 200），**未做生产日志交叉确认**——上线后建议用 `scripts/ops/ks_logs.py --service square-web-next --grep 'X-API-Key|SITE_X_API_KEY'` 补一次日志级验证。
 - [ ] `handleAlipayWebhook` 目前是空实现（`log.warn` 占位，注释"本期不实现，所有支付走 Stripe"），确认支付宝确实全程走 Stripe 托管、不需要独立 webhook。
 
 ### 附：完整 SQL 脚本 —— V1.2.16 建表（hiq-backend-admin，PostgreSQL）

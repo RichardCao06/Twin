@@ -95,7 +95,7 @@ Provenance {
 ```
 
 **关键推论：**
-- **CODE 源可以完全自动化**——`GitReader.index_repo` 直接产结构化候选（函数/类/接口 + `content_hash`），**绕过蒸馏 LLM** 直入 Ingestor（`scripts/kdl_ingest.py --repo` 就是这条路径）。
+- **CODE 源可以完全自动化**——`GitReader.index_repo` 直接产结构化候选（函数/类/接口 + `content_hash`），**绕过蒸馏 LLM** 直入 Ingestor（`scripts/kdl/kdl_ingest.py --repo` 就是这条路径）。
 - **文档/对话的蒸馏必须有 Claude 会话在场**——因为要理解语义。这与"KU 一律 DRAFT 起步、本人确认才升 AUTHORITATIVE"天然契合：蒸馏时本人就在环，顺手轻确认。
 - **`StubDistiller`** 保留为**确定性离线基线**（供测试与结构极规整的材料），不是主路径。
 - **`LlmDistiller`（外部模型后端）不做**；若未来要无人值守，作为 `claude -p` headless 受限调用的扩展点。
@@ -273,17 +273,17 @@ CODE 是漂移风险最高的源。三层递进：
 
 | 脚本 | 用途 |
 |---|---|
-| `scripts/kdl_ingest.py` | **候选直入灌库**——`--repo` 跑 GitReader 产 CODE 候选或 `--candidates` 读已蒸馏 JSON，都**绕过 Distiller** 直接给 Ingestor。为什么不用 `kb ingest --input`：那条路把输入当"原始源材料"再蒸馏一遍，会把已经产好的候选二次处理错位。 |
-| `scripts/kdl_fetch_docs.py` | 摄取本人钉钉文档正文：`contact user get-self` → 拿 uid → `doc search --creator-uids <uid> --extensions adoc` 翻页 → 逐篇 `doc read` → 存 `/tmp/kdl-ddoc/<safe>.md` + `manifest.json`（含 nodeId 供后续做 provenance） |
-| `scripts/kdl_dedup_docs.py` | 合并 `<dir>/doc-*.json` 候选，给每张卡 provenance ref 追加 `#k<i>` 后缀。防非 CODE 候选 `make_ku_id = sha1(source_type | prov_ref)` 撞键覆盖 |
-| `scripts/kdl_review.py` | 批量把 DRAFT KU 升到 REVIEWED——本人一次性"轻确认"。走 `store.set_authority` 状态机（DRAFT → REVIEWED 合法，禁越级 AUTHORITATIVE），不绕过任何规则 |
-| `scripts/kdl_acceptance.py` | 阶段 1 退出条件验收套件（§8） |
+| `scripts/kdl/kdl_ingest.py` | **候选直入灌库**——`--repo` 跑 GitReader 产 CODE 候选或 `--candidates` 读已蒸馏 JSON，都**绕过 Distiller** 直接给 Ingestor。为什么不用 `kb ingest --input`：那条路把输入当"原始源材料"再蒸馏一遍，会把已经产好的候选二次处理错位。 |
+| `scripts/kdl/kdl_fetch_docs.py` | 摄取本人钉钉文档正文：`contact user get-self` → 拿 uid → `doc search --creator-uids <uid> --extensions adoc` 翻页 → 逐篇 `doc read` → 存 `/tmp/kdl-ddoc/<safe>.md` + `manifest.json`（含 nodeId 供后续做 provenance） |
+| `scripts/kdl/kdl_dedup_docs.py` | 合并 `<dir>/doc-*.json` 候选，给每张卡 provenance ref 追加 `#k<i>` 后缀。防非 CODE 候选 `make_ku_id = sha1(source_type | prov_ref)` 撞键覆盖 |
+| `scripts/kdl/kdl_review.py` | 批量把 DRAFT KU 升到 REVIEWED——本人一次性"轻确认"。走 `store.set_authority` 状态机（DRAFT → REVIEWED 合法，禁越级 AUTHORITATIVE），不绕过任何规则 |
+| `scripts/kdl/kdl_acceptance.py` | 阶段 1 退出条件验收套件（§8） |
 
 ---
 
 ## 8. 验收：阶段 1 退出条件
 
-`scripts/kdl_acceptance.py` 对**真实 KDL 库**跑 4 项可测验收，产报告 + PASS / FAIL。已跑过并签署。
+`scripts/kdl/kdl_acceptance.py` 对**真实 KDL 库**跑 4 项可测验收，产报告 + PASS / FAIL。已跑过并签署。
 
 | # | 指标 | 目标 | **实际数值（2026-06 签署时）** |
 |---|---|---|---|
@@ -292,7 +292,7 @@ CODE 是漂移风险最高的源。三层递进：
 | 3 | 对外发送计数 | = 0 | **0** ✅ |
 | 4 | 脱敏抽检 误 / 漏 | 均 = 0 | **0 / 0** ✅ |
 
-**金标"自检式"**：以每个 KU 的 title 作查询，期望该 KU 落在 Top-5 检索结果里，量化"检索能否召回已知知识"。真实自然语言查询金标可由本人后续补充，跑同一 harness（`scripts/kdl_acceptance.py`）。
+**金标"自检式"**：以每个 KU 的 title 作查询，期望该 KU 落在 Top-5 检索结果里，量化"检索能否召回已知知识"。真实自然语言查询金标可由本人后续补充，跑同一 harness（`scripts/kdl/kdl_acceptance.py`）。
 
 **灌入量**：7289 KU 覆盖 Workspace 全部 git 仓库（CODE 主体）+ 本人钉钉文档（PLAYBOOK/ISSUE）。
 

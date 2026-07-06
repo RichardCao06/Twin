@@ -37,9 +37,9 @@
 
 - `dws-agent kb search/draft/status` —— 检索知识库
 - `dws-agent task create/publish` —— 派活给 ClaudeCenter Worker
-- `scripts/kdl_*.py` —— 灌库/验收工具链；`src/dws_agent/kdl/dws_read.py` `DwsReader` —— dws 只读封装
-- `scripts/ks_logs.py` —— 生产日志只读查询（绕 kubectl RBAC，走 KubeSphere API）
-- `scripts/feedback_patrol.py` —— GitHub feedback issue 巡检 → 钉钉通知（launchd 每小时跑）
-- `scripts/render_design_html.py` —— 设计文档 md→html 幂等渲染
+- `scripts/kdl/*.py` —— 灌库/验收工具链；`src/dws_agent/kdl/dws_read.py` `DwsReader` —— dws 只读封装
+- `scripts/ops/ks_logs.py` —— 生产日志只读查询（绕 kubectl RBAC，走 KubeSphere API）
+- `scripts/ops/feedback_patrol.py` —— GitHub feedback issue 巡检 → 钉钉通知（launchd 每小时跑）
+- `scripts/docs/render_design_html.py` —— 设计文档 md→html 幂等渲染
 - 本地 subagents：`Explore` / `Plan` / `uat-deploy` / `uat-verify` / `prod-verify`
 - 阶段 0 Executor + PolicyGate + confirm_token + dws-shim —— 安全动作底座

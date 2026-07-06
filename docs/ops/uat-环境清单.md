@@ -203,7 +203,7 @@ dataset-web ──POST /api/sso/auth/login──▶ dataset-sso（ec-sso）
 
 ## 11. E2E 验收映射（`uat-verify` agent 用）
 
-> PR 仓库 → 验收前端 → uat 入口 → 登录 → 典型验收页/关键 API。登录走 `scripts/uat_login.py`
+> PR 仓库 → 验收前端 → uat 入口 → 登录 → 典型验收页/关键 API。登录走 `scripts/uat/uat_login.py`
 > （凭证注入、storageState 不落库）；工作流见 `.claude/agents/uat-verify.md`。
 
 | PR 仓库 | 前端（俗称） | uat2 入口 | 登录接口 | 典型验收页 / 关键 API |
