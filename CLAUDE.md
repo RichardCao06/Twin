@@ -4,14 +4,14 @@
 
 ## 当前执行蓝图（先看这个）
 
-- **[docs/方案-MVP.md](docs/方案-MVP.md)** —— MVP 优先方案：手动触发 → 读钉钉消息 → 检索 KDL → Claude 拟答 → 你确认 → 代发。**前期只走通这条线**；复杂的分级/编排/自治推到后期。
+- **[docs/design/方案-MVP.md](docs/design/方案-MVP.md)** —— MVP 优先方案：手动触发 → 读钉钉消息 → 检索 KDL → Claude 拟答 → 你确认 → 代发。**前期只走通这条线**；复杂的分级/编排/自治推到后期。
 
 ## 参考文档
 
 | 文档 | 作用 |
 |---|---|
-| [docs/dws-agent-设计方案.md](docs/dws-agent-设计方案.md) | 长期完整愿景（7 约束/三套分级/四角色/五阶段）；MVP 跑通后逐级演进 |
-| [docs/dws-只读接口校准.md](docs/dws-只读接口校准.md) | dws 只读命令+字段校准（读消息/文档，MVP 用） |
+| [docs/design/dws-agent-设计方案.md](docs/design/dws-agent-设计方案.md) | 长期完整愿景（7 约束/三套分级/四角色/五阶段）；MVP 跑通后逐级演进 |
+| [docs/overview/dws-只读接口校准.md](docs/overview/dws-只读接口校准.md) | dws 只读命令+字段校准（读消息/文档，MVP 用） |
 | [README.md](README.md) | 阶段 0/1 已实现内容、退出条件、如何跑测试 |
 | docs/archive/ | 已完成的实现细节（KDL 数据接入方案/子方案/会话记录），留档 |
 
