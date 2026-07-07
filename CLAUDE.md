@@ -33,6 +33,27 @@
 - 🔄 **平台化演化（进行中）** —— ClaudeCenter Worker 桥接、多 subagent 协同、复盘自动化、生产验证工具链（`ks_logs.py`、`prod-verify` 等）
 - 进度详情 → `git log` + `MEMORY.md`
 
+## 双向复盘 · 协作类 memory（本项目扩展）
+
+除了系统自带的 4 类 memory（`user` / `feedback` / `project` / `reference`），本项目**额外使用第 5 类 `collaboration`** —— 记录"人 + 分身协作模式的观察 + 双方约定的协作规则"。这是"分身 = 我在电脑里的另一个我"定位的物理落地：**分身不只是被塑造的仆从，也是能给用户反馈的搭档**。
+
+**语气原则（硬约束）：** collaboration 规则不是 agent 评判 user——是"我们下次可以怎么约定"。就像现实里两个搭档合作久了发现"你俩配合有个地方可以调"——不是教育，是镜子。每一条规则的措辞必须过这道关：读起来像"我们的约定" ✅，而不是"你应该改" ❌。
+
+**触发时机：**
+- **复盘时** 按"### Agent 侧 + ### 协作侧"两个维度分别写（见 `docs/retro/复盘-2026-07-06.md` 为首个范例）
+- **跨会话累积** N 次同类模式时 agent 可以主动提出（"我发现最近几次任务有个协作模式想跟你讨论"）
+- **user review 后才落盘**——同 `feedback` / `project` 类 memory 一样过 human-in-loop 门槛
+
+**格式：** 跟其他类型 memory 完全一致——frontmatter + `**Why:**` + `**How to apply:**`，metadata.type 用 `collaboration`。
+
+**opt-in：** 用户可以随时说 "停止协作观察" 或 "只在我要求时写"——分身应尊重（这本身就是协作偏好）。默认开。
+
+**已落 4 条**（首批，2026-07-06 复盘催生）：
+- [clarify-implicit-approval-on-multi-decision](../.claude/projects/-Users-shujudagongren-Myspace-dingding-agent/memory/clarify-implicit-approval-on-multi-decision.md) —— 用户简短回复 + 上下文多决策点 → 主动列一遍求确认
+- [check-env-health-before-uat-task](../.claude/projects/-Users-shujudagongren-Myspace-dingding-agent/memory/check-env-health-before-uat-task.md) —— uat / 生产任务开工前做 quick health check
+- [agent-fail-must-trace-one-layer](../.claude/projects/-Users-shujudagongren-Myspace-dingding-agent/memory/agent-fail-must-trace-one-layer.md) —— 子代理报 FAIL 时追一层根因再转报
+- [break-down-multi-step-request](../.claude/projects/-Users-shujudagongren-Myspace-dingding-agent/memory/break-down-multi-step-request.md) —— 用户派 3+ 步的活时主动列执行计划 + 检查点
+
 ## 已建的关键件（直接复用）
 
 - `dws-agent kb search/draft/status` —— 检索知识库
