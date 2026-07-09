@@ -129,4 +129,4 @@ docs/retro/       # 每日 / 事故复盘（反哺 memory）
 
 ## License
 
-Proprietary
+Apache License 2.0 —— 详见 [`LICENSE`](LICENSE)
