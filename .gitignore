@@ -15,6 +15,9 @@ docs/**/*.html
 # Playwright E2E 验收的临时产物（截图/快照/storageState，含登录态，绝不入库）
 .playwright-mcp/
 /*.png
+# uat/tidas E2E 验收截图归档（内部业务界面，绝不入公开库）
+docs/assets/uat*-e2e-*/
+docs/assets/tidas-uat/
 # uat E2E 凭证（含密码，放项目根但绝不入库；切勿 git add -f）
 /uat.env
 
